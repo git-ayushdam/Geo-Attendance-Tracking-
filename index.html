@@ -395,7 +395,7 @@
         /* Main Content */
         .main-content {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 2.5fr 1fr;
             gap: 2rem;
         }
 
@@ -650,23 +650,45 @@
             .time-display {
                 grid-template-columns: 1fr;
             }
+            .map-container {
+                height: 500px; /* New, taller mobile height */
+            }
         }
 
         /* Map Placeholder */
-        .map-container {
-            height: 200px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1rem;
-            border: 2px dashed rgba(255,255,255,0.3);
-        }
-
+       /* Map Placeholder */
         .map-placeholder {
             text-align: center;
-            opacity: 0.7;
+            opacity: 0.8; /* Slightly more visible */
+            font-size: 1.2rem;
+            color: white;
+            position: absolute; /* Center it within the container */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+        }
+
+        /* Map Container Styles */
+        .map-container {
+            height: 600px; /* Increased height */
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            display: flex; /* Kept for alignment */
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+            position: relative; /* Crucial for placeholder positioning */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        /* Style for the actual Google Map embed */
+        .google-map-embed {
+            width: 100%;
+            height: 100%;
+            visibility: hidden; /* Hide map until it's fully loaded */
         }
         /* Calendar Modal Styles */
         .calendar-modal {
@@ -778,11 +800,12 @@
 
     <script>
         // Configuration
-        const CONFIG = {
-            OFFICE_LOCATION: { lat: 22.5664, lng: 88.3516 }, // <-- FIXED: Updated to Kolkata
-            OFFICE_RADIUS: 20000,
-            STORAGE_KEY: 'geo_attendance_pro'
-        };
+            const CONFIG = {
+        // --- FIXED: Updated to Future Institute of Engineering and Management ---
+        OFFICE_LOCATION: { lat: 22.459411, lng: 88.380139 }, 
+        OFFICE_RADIUS: 500, // You can increase this radius if needed
+        STORAGE_KEY: 'geo_attendance_pro'
+    };
 
         // State Management
         class AppState {
@@ -1127,7 +1150,12 @@
                             <i class="fas fa-sync-alt"></i>
                         </button>
                     </div>
-                    <div class="map-container" id="map" style="height: 220px; margin-bottom: 1rem;"></div>
+                    <div class="map-container">
+                        <div class="map-placeholder" id="mapPlaceholder">
+                            <span><i class="fas fa-spinner fa-spin"></i> Loading Map...</span>
+                        </div>
+                        <div id="googleMap" class="google-map-embed"></div>
+                    </div>
                     <div class="time-display">
                         <div class="time-card">
                             <div class="time-label">Check In</div>
@@ -1684,51 +1712,62 @@
         // --- End Simulation ---
 
         // Map rendering logic
-        function renderMap() {
-            if (!window.google || !window.google.maps) return;
-            const mapDiv = document.getElementById('map');
+    function renderMap() {
+            if (!window.google || !window.google.maps) {
+                const placeholderDiv = document.getElementById('mapPlaceholder');
+                if(placeholderDiv) placeholderDiv.innerHTML = '<span><i class="fas fa-exclamation-triangle"></i> Map failed to load. Check API key.</span>';
+                return;
+            };
+
+            const mapDiv = document.getElementById('googleMap');
+            const placeholderDiv = document.getElementById('mapPlaceholder');
             if (!mapDiv) return;
+
             const office = CONFIG.OFFICE_LOCATION;
             const userLoc = app.currentLocation || office;
+
             const map = new google.maps.Map(mapDiv, {
                 center: userLoc,
                 zoom: 16,
                 mapTypeId: 'roadmap',
                 disableDefaultUI: true
             });
-            // Office marker
+
+            map.addListener('tilesloaded', () => {
+                if (placeholderDiv) placeholderDiv.style.display = 'none';
+                if (mapDiv) mapDiv.style.visibility = 'visible';
+            });
+
+            // --- CHANGED: Office marker is now a YELLOW PIN ---
             new google.maps.Marker({
                 position: office,
                 map,
                 title: 'Office',
-                icon: {
-                    url: 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png'
-                }
+                icon: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png'
             });
-            // User marker
+
+            // --- CHANGED: User marker is now a BLUE PIN ---
             if (app.currentLocation) {
                 new google.maps.Marker({
                     position: app.currentLocation,
                     map,
                     title: 'You',
-                    icon: {
-                        url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png'
-                    }
+                    icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
                 });
+                
                 // Draw office radius
                 new google.maps.Circle({
                     map,
                     center: office,
                     radius: CONFIG.OFFICE_RADIUS,
-                    fillColor: '#ffa726',
+                    fillColor: '#f1c40f', // Yellow to match the pin
                     fillOpacity: 0.15,
-                    strokeColor: '#fb8c00',
+                    strokeColor: '#f1c40f',
                     strokeOpacity: 0.7,
                     strokeWeight: 2
                 });
             }
         }
-
         // Report page
         function showReportPage() {
             const appEl = document.getElementById('app');
@@ -1942,4 +1981,3 @@ function updateAttendanceButtons() {
     </script>
 </body>
 </html>
-
